@@ -14,9 +14,10 @@ import torch.nn as nn
 import numpy as np
 
 
+train_cols = ['yday', 'total_sec', 'T_Ext_PV', 'Cloud', 'Air0min', 'Air0max', 'T_RDC_PV', 'EV_RDC']
 # dframe = preprocess("Export_test_appel.csv")
 # dframe = preprocess("Export_21-01-2021_au_17-03-2023.csv")
-dframe = preprocess("Export_26-01-2023_au_22-02-2023.csv")
+dframe = preprocess("Export_26-01-2023_au_22-02-2023.csv", train_cols)
 
 
 # print(dframe)
@@ -165,6 +166,7 @@ class LSTMForecaster(nn.Module):
 
 nhid = 10  # Number of nodes in the hidden layer
 n_dnn_layers = 1  # Number of hidden fully connected layers
+n_lstm = 1  # Number of hidden fully connected layers
 nout = target_wdw  # Prediction Window
 sequence_len = train_wdw  # Training Window
 
@@ -177,11 +179,11 @@ USE_CUDA = torch.cuda.is_available()
 device = 'cuda' if USE_CUDA else 'cpu'
 
 # Initialize the model
-model = LSTMForecaster(ninp, nhid, nout, sequence_len, n_deep_layers=n_dnn_layers, use_cuda=USE_CUDA).to(device)
+model = LSTMForecaster(ninp, nhid, nout, sequence_len, n_deep_layers=n_dnn_layers, n_lstm_layers=n_lstm, use_cuda=USE_CUDA).to(device)
 
 # Set learning rate and number of epochs to train over
 lr = 4e-4
-n_epochs = 10
+n_epochs = 2
 
 # Initialize the loss function and optimizer
 criterion = nn.MSELoss().to(device)
@@ -234,12 +236,12 @@ plt.plot(range(n_epochs), t_losses)
 plt.plot(range(n_epochs), v_losses)
 plt.show()
 #
-# torch.save(model.state_dict(), 'state_dict.pt')
+torch.save(model.state_dict(), 'saved_model.pt')
 #
 # # Initialize again the model
 # checkpoint = torch.load('state_dict.pt')
-# model = LSTMForecaster(ninp, nhid, nout, sequence_len, n_deep_layers=n_dnn_layers, use_cuda=USE_CUDA).to(device)
-# model.load_state_dict()
+model = LSTMForecaster(ninp, nhid, nout, sequence_len, n_deep_layers=n_dnn_layers, n_lstm_layers=n_lstm, use_cuda=USE_CUDA).to(device)
+model.load_state_dict(torch.load('saved_model.pt'))
 # model.eval()
 #
 
@@ -249,7 +251,7 @@ def make_predictions_from_dataloader(model, unshuffled_dataloader):
     x_array, predictions, actuals = [], [], []
     for x, y in unshuffled_dataloader:
         with torch.no_grad():
-            x_array = np.append(x_array, x)
+            # x_array = np.append(x_array, x)
             p = model(x)
             predictions = np.append(predictions, p)
             actuals = np.append(actuals, y.squeeze())
@@ -261,11 +263,14 @@ def make_predictions_from_dataloader(model, unshuffled_dataloader):
 
 x_arr, pred, actual = make_predictions_from_dataloader(model, mytestloader)
 
-print(len(x_arr))
 
 plt.plot(range(len(pred)), pred)
 plt.plot(range(len(pred)), actual)
 plt.show()
+
+
+
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     print('')
