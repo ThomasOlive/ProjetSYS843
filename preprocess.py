@@ -1,13 +1,15 @@
+from pandas.core.api import DataFrame
 import pandas as pd
 from datetime import datetime, timedelta
 import pytz
+import math
 
 from sklearn.preprocessing import StandardScaler
 
 tzinfo = pytz.timezone("Europe/Paris")
 
 
-def preprocess(csv_path, train_cols):
+def preprocess(csv_path, train_cols, standard_bool=False):
     df = pd.read_csv(csv_path)
 
     # Preprocessing
@@ -19,20 +21,24 @@ def preprocess(csv_path, train_cols):
     df['yday'] = df['time'].apply(lambda x: tstamp_to_mydate(x)[1])
     df['total_sec'] = df['time'].apply(lambda x: tstamp_to_mydate(x)[2])
 
+    df['cyclic_yday_cos'] = df['yday'].apply(lambda x: math.cos(x / 365 * 2 * math.pi))
+    df['cyclic_yday_sin'] = df['yday'].apply(lambda x: math.sin(x / 365 * 2 * math.pi))
+
+    df['cyclic_sec_cos'] = df['total_sec'].apply(lambda x: math.cos(x / 86400 * 2 * math.pi))
+    df['cyclic_sec_sin'] = df['total_sec'].apply(lambda x: math.sin(x / 86400 * 2 * math.pi))
+
+    df.loc[df['T_Depart_PV'] >= 40]['T_Depart_PV'] = 40
+
     # Fit scalers
     scalers = {}
-    for x in df.columns:
-        if x in train_cols:
-            scalers[x] = StandardScaler().fit(df[x].values.reshape(-1, 1))
-
-    # Transform data via scalers
     norm_df = df.copy()
-    for i, key in enumerate(scalers.keys()):
-        norm = scalers[key].transform(norm_df.iloc[:, i].values.reshape(-1, 1))
-        norm_df.iloc[:, i] = norm
-
+    if standard_bool:
+        for x in df.columns:
+            if x in train_cols:
+                scaler = StandardScaler().set_output(transform="pandas")
+                norm_df[x] = scaler.fit_transform(df[x].values.reshape(-1, 1))
     # df = df.reset_index()
-    return df
+    return norm_df
 
 
 def tstamp_to_mydate(timestamp):
