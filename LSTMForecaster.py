@@ -8,15 +8,13 @@ device = 'cuda' if USE_CUDA else 'cpu'
 
 class LSTMForecaster(nn.Module):
 
-    def __init__(self, n_features, n_hidden, n_outputs, sequence_len, n_lstm_layers=1, n_deep_layers=10, use_cuda=False,
-                 dropout=0.2):
+    def __init__(self, n_features, n_hidden, n_outputs, sequence_len, n_lstm_layers=1, n_deep_layers=10, use_cuda=False):
 
-        # n_features: number of input features (1 for univariate forecasting)
-        # n_hidden: number of neurons in each hidden layer
+        # n_features: number of input features
+        # n_hidden: number of neurons in hidden layer
         # n_outputs: number of outputs to predict for each training example
         # n_deep_layers: number of hidden dense layers after the lstm layer
         # sequence_len: number of steps to look back at for prediction
-        # dropout: float (0 < dropout < 1) dropout ratio between dense layers
 
         super().__init__()
 
@@ -31,25 +29,7 @@ class LSTMForecaster(nn.Module):
                             batch_first=True)  # As we have transformed our data in this way
 
         # first dense after lstm
-        self.fc1 = nn.Linear(n_hidden * sequence_len, n_hidden)
-        # Dropout layer
-        self.dropout = nn.Dropout(p=dropout)
-
-        # Create fully connected layers (n_hidden x n_deep_layers)
-        dnn_layers = []
-        for i in range(n_deep_layers):
-            # Last layer (n_hidden x n_outputs)
-            if i == n_deep_layers - 1:
-                dnn_layers.append(nn.ReLU())
-                dnn_layers.append(nn.Linear(n_hidden, n_outputs))
-            # All other layers (n_hidden x n_hidden) with dropout option
-            else:
-                dnn_layers.append(nn.ReLU())
-                dnn_layers.append(nn.Linear(n_hidden, n_hidden))
-                if dropout:
-                    dnn_layers.append(nn.Dropout(p=dropout))
-        # compile DNN layers
-        self.dnn = nn.Sequential(*dnn_layers)
+        self.fc = nn.Linear(n_hidden * sequence_len, n_outputs)
 
     def forward(self, x):
 
@@ -65,7 +45,6 @@ class LSTMForecaster(nn.Module):
         self.hidden = (hidden_state, cell_state)
 
         # Forward Pass
-        x, h = self.lstm(x, self.hidden)  # LSTM
-        x = self.dropout(x.contiguous().view(x.shape[0], -1))  # Flatten lstm out
-        x = self.fc1(x)  # First Dense
-        return self.dnn(x)  # Pass forward through fully connected DNN.
+        x, h = self.lstm(x, self.hidden)  # LSTM # Flatten lstm out
+        x = self.fc(x.contiguous().view(x.shape[0], -1))  # First Dense
+        return x  # Pass forward through fully connected DNN.

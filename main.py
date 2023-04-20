@@ -4,7 +4,9 @@ import pytz
 from preprocess import *
 from dframe_to_dataloader import *
 from LSTMForecaster import *
+from RNNModel import *
 from make_predictions_from_dataloader import *
+from LSTMRNNModel import *
 import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import TensorDataset, DataLoader, Dataset, Subset, random_split
@@ -15,6 +17,8 @@ from itertools import chain
 # ___________________ Pre - Processing ______________________________________________
 train_cols = ['cyclic_yday_cos', 'cyclic_yday_sin', 'cyclic_sec_cos', 'cyclic_sec_sin', 'T_Ext_PV', 'Cloud', 'Air0min',
               'Air0max', 'T_RDC_PV', 'EV_RDC']
+target_cols = 'T_Depart_PV'
+
 cols_2_norm = ['T_Ext_PV', 'Cloud', 'Air0min', 'Air0max', 'T_RDC_PV', 'EV_RDC']
 
 path_small_data = "Export_26-01-2023_au_22-02-2023.csv"
@@ -26,8 +30,7 @@ dframe = preprocess(path_small_data, cols_2_norm, standard_bool=True)
 # path_full_dframe = "drive/MyDrive/Colab Notebooks/SYS843/preprocessed_full_frame.csv"
 # dframe = pd.read_csv(path_full_dframe)
 
-target_cols = 'T_Depart_PV'
-train_wdw = int(2*4)
+train_wdw = int(24*4)
 target_wdw = 1
 BATCH_SIZE = 1
 nb_jours_test = 4
@@ -36,6 +39,8 @@ trainloader, validloader, testloader = dframe_to_dataloader(dframe, train_wdw, t
 
 
 # ___________________ Training the model ______________________________________________
+
+# __________ Parameters _____________________
 nhid = 8  # Number of nodes in the hidden layer
 n_dnn_layers = 1  # Number of hidden fully connected layers
 n_lstm = 1  # Number of lstm layers
@@ -49,19 +54,24 @@ ninp = len(train_cols)
 USE_CUDA = torch.cuda.is_available()
 device = 'cuda' if USE_CUDA else 'cpu'
 
-# Initialize the model
-torch.set_default_dtype(torch.float64)
-model = LSTMForecaster(ninp, nhid, nout, sequence_len, n_deep_layers=n_dnn_layers, n_lstm_layers=n_lstm, use_cuda=USE_CUDA).to(device)
-# model = model.float()
+
 # Set learning rate and number of epochs to train over
 lr = 4e-4
-n_epochs = 2
+n_epochs = 50
 
+# Initialize the model
+torch.set_default_dtype(torch.float64)
+# model = LSTMForecaster(ninp, nhid, nout, sequence_len, n_deep_layers=n_dnn_layers, n_lstm_layers=n_lstm,
+#                        use_cuda=USE_CUDA).to(device)
+# model = RNNModel(ninp, nhid, n_dnn_layers, nout).to(device)
+
+model = LSTMRNNModel(ninp, nhid, nhid, nout, sequence_len, n_lstm_layers=1, n_rnn_layers=1,
+                     use_cuda=USE_CUDA).to(device)
 # Initialize the loss function and optimizer
 criterion = nn.MSELoss().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-
+# _________ Training ___________________________
 # Lists to store training and validation losses
 t_losses, v_losses = [], []
 # Loop over epochs
@@ -93,9 +103,7 @@ for epoch in range(n_epochs):
         with torch.no_grad():
             x = x.to(device)
             y = y.squeeze().to(device)
-            # x, y = x.to(device), y.to(device)
             preds = model(x).squeeze()
-            # preds = model(x)
             error = criterion(preds, y)
         valid_loss += error.item()
     valid_loss = valid_loss / len(testloader)
