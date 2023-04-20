@@ -78,7 +78,6 @@ class LSTMRNNModel(nn.Module):
         out_rnn = self.fc_rnn(out_rnn)
 
         # __________ Hybrid _________________
-        out = [out_lstm, out_rnn]
-        out = torch.Tensor(out)
+        out = torch.cat((out_lstm, out_rnn), 1)
         out = self.fc_last(out)
         return out  # Pass forward through fully connected DNN.

@@ -1,4 +1,3 @@
-from pandas.core.api import DataFrame
 import pandas as pd
 from datetime import datetime, timedelta
 import pytz
@@ -14,19 +13,22 @@ def preprocess(csv_path, train_cols, standard_bool=False):
 
     # Preprocessing
 
-    df = df.drop(columns='name')
-    df = df.dropna().reset_index(drop=True)
+    df = df.drop(columns='name')  # useless column in the csv
+    df = df.dropna().reset_index(drop=True)  # delete the empty rows
 
-    df['date'] = df['time'].apply(lambda x: tstamp_to_mydate(x)[0])
-    df['yday'] = df['time'].apply(lambda x: tstamp_to_mydate(x)[1])
-    df['total_sec'] = df['time'].apply(lambda x: tstamp_to_mydate(x)[2])
+    # converting the unix time to "human-readable" values
+    df['date'] = df['time'].apply(lambda x: tstamp_to_mydate(x)[0])  # the date
+    df['yday'] = df['time'].apply(lambda x: tstamp_to_mydate(x)[1])  # number of days since the beginning of the year
+    df['total_sec'] = df['time'].apply(lambda x: tstamp_to_mydate(x)[2])  # number of seconds since midnight
 
+    # cyclical encoding of the yday and total_sec values thx to trigonometry
     df['cyclic_yday_cos'] = df['yday'].apply(lambda x: math.cos(x / 365 * 2 * math.pi))
     df['cyclic_yday_sin'] = df['yday'].apply(lambda x: math.sin(x / 365 * 2 * math.pi))
 
     df['cyclic_sec_cos'] = df['total_sec'].apply(lambda x: math.cos(x / 86400 * 2 * math.pi))
     df['cyclic_sec_sin'] = df['total_sec'].apply(lambda x: math.sin(x / 86400 * 2 * math.pi))
 
+    # correcting the T_Depart_PV value because of an "error" in the creation of the csv
     df.loc[df['T_Depart_PV'] >= 40]['T_Depart_PV'] = 40
 
     # Fit scalers

@@ -6,7 +6,7 @@ import torch
 
 # Defining a function that creates sequences and targets
 def generate_sequences(df: pd.DataFrame, tw: int, pw: int, training_columns, target_columns):
-    # df: Pandas DataFrame of the univariate time-series
+    # df: Pandas DataFrame of the time-series
     # tw: Training Window - Integer defining how many steps to look back
     # pw: Prediction Window - Integer defining how many steps forward to predict
     # returns: dictionary of sequences and targets for all sequences

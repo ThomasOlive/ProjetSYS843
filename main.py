@@ -1,18 +1,10 @@
-import pandas as pd
-from datetime import datetime, timedelta
-import pytz
 from preprocess import *
 from dframe_to_dataloader import *
-from LSTMForecaster import *
-from RNNModel import *
 from make_predictions_from_dataloader import *
 from LSTMRNNModel import *
 import matplotlib.pyplot as plt
 import torch
-from torch.utils.data import TensorDataset, DataLoader, Dataset, Subset, random_split
 import torch.nn as nn
-import numpy as np
-from itertools import chain
 
 # ___________________ Pre - Processing ______________________________________________
 train_cols = ['cyclic_yday_cos', 'cyclic_yday_sin', 'cyclic_sec_cos', 'cyclic_sec_sin', 'T_Ext_PV', 'Cloud', 'Air0min',
@@ -41,7 +33,8 @@ trainloader, validloader, testloader = dframe_to_dataloader(dframe, train_wdw, t
 # ___________________ Training the model ______________________________________________
 
 # __________ Parameters _____________________
-nhid = 8  # Number of nodes in the hidden layer
+nhid_lstm = 8  # Number of nodes in the lstm hidden layer
+nhid_rnn = 16  # Number of nodes in the rnn hidden layer
 n_dnn_layers = 1  # Number of hidden fully connected layers
 n_lstm = 1  # Number of lstm layers
 nout = target_wdw  # Prediction Window
@@ -57,7 +50,7 @@ device = 'cuda' if USE_CUDA else 'cpu'
 
 # Set learning rate and number of epochs to train over
 lr = 4e-4
-n_epochs = 50
+n_epochs = 10
 
 # Initialize the model
 torch.set_default_dtype(torch.float64)
@@ -65,7 +58,7 @@ torch.set_default_dtype(torch.float64)
 #                        use_cuda=USE_CUDA).to(device)
 # model = RNNModel(ninp, nhid, n_dnn_layers, nout).to(device)
 
-model = LSTMRNNModel(ninp, nhid, nhid, nout, sequence_len, n_lstm_layers=1, n_rnn_layers=1,
+model = LSTMRNNModel(ninp, nhid_lstm, nhid_rnn, nout, sequence_len, n_lstm_layers=1, n_rnn_layers=1,
                      use_cuda=USE_CUDA).to(device)
 # Initialize the loss function and optimizer
 criterion = nn.MSELoss().to(device)
