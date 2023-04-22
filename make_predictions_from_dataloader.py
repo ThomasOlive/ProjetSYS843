@@ -2,9 +2,13 @@ import torch
 import numpy as np
 
 
-def make_predictions_from_dataloader(model, unshuffled_dataloader, dframe, device):
+def make_predictions_from_dataloader(model, unshuffled_dataloader, dframe, device, target_wdw):
     model.eval()
-    predictions, actuals = [], []
+    if target_wdw > 1:
+        predictions = [[0]*target_wdw]
+    else:
+        predictions = []
+    actuals = []
     firstloop = True
     for x, y in unshuffled_dataloader:
         with torch.no_grad():
@@ -29,9 +33,15 @@ def make_predictions_from_dataloader(model, unshuffled_dataloader, dframe, devic
             y = y.squeeze().to(device)
 
             p = model(x).squeeze()
-            predictions = np.append(predictions, p)
+            # print(p)
+            # print(p.shape)
+            # print(type(p))
+            predictions = np.append(predictions, p, axis=0)
             # print(predictions.shape)
-            actuals = np.append(actuals, y)
+            if target_wdw > 1:
+                actuals = np.append(actuals, y[:, 0])
+            else:
+                actuals = np.append(actuals, y)
             # print(actuals.shape)
     # on cherche comme expliqué, la ligne du dataframe correspondante à cette date
 
@@ -41,4 +51,6 @@ def make_predictions_from_dataloader(model, unshuffled_dataloader, dframe, devic
                        (dframe['cyclic_sec_sin'] == sec_sin)]
 
     k_idx = k_row.index.values[0] + 1
+    if target_wdw > 1:
+        predictions = np.delete(predictions, 0, 0)
     return predictions, actuals, k_idx

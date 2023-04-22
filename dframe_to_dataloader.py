@@ -42,8 +42,12 @@ def generate_dict_batch(dict_seq: dict, batch_sz: int, tw: int, pw: int, trainin
     in_batch_idx = 0
     for dict_idx in range(l_dict_seq):
         if batch_idx < nb_batch:
+
             batch_x[batch_idx][in_batch_idx][:] = dict_seq[dict_idx]['sequence']
-            batch_y[batch_idx][in_batch_idx] = dict_seq[dict_idx]['target']
+            if pw == 1:
+                batch_y[batch_idx][in_batch_idx][:] = dict_seq[dict_idx]['target']
+            else:
+                batch_y[batch_idx][in_batch_idx][:] = dict_seq[dict_idx]['target'][:, np.newaxis]
 
             in_batch_idx += 1
             if in_batch_idx == batch_sz:

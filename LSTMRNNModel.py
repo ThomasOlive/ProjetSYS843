@@ -10,7 +10,7 @@ device = 'cuda' if USE_CUDA else 'cpu'
 class LSTMRNNModel(nn.Module):
 
     def __init__(self, n_features, hidden_dim_lstm, hidden_dim_rnn, n_outputs, sequence_len, n_lstm_layers=1,
-                 n_rnn_layers=1, n_deep_layers=10, use_cuda=False):
+                 n_rnn_layers=1, use_cuda=False):
 
         # n_features: number of input features
         # n_hidden: number of neurons in each hidden layer
@@ -45,6 +45,10 @@ class LSTMRNNModel(nn.Module):
 
         self.fc_last = nn.Linear(n_outputs*2, n_outputs)
 
+        self.dropout_lstm = nn.Dropout(p=0.5)
+        self.dropout_rnn = nn.Dropout(p=0.5)
+        self.dropout_last = nn.Dropout(p=0.5)
+
     def forward(self, x):
 
         # __________ LSTM _________________
@@ -61,23 +65,25 @@ class LSTMRNNModel(nn.Module):
 
         # Forward Pass
         out_lstm, h = self.lstm(x, self.hidden)  # LSTM # Flatten lstm out
+        out_lstm = out_lstm.detach()
         out_lstm = self.fc_lstm(out_lstm.contiguous().view(x.shape[0], -1))  # First Dense
-
+        out_lstm = self.dropout_lstm(out_lstm)
         # __________ RNN _________________
         # Initializing hidden state for first input with zeros
         h0 = torch.zeros(self.n_rnn_layers, x.size(0), self.hidden_dim_rnn).requires_grad_()
 
         # Forward propagation by passing in the input and hidden state into the model
         out_rnn, h0 = self.rnn(x, h0.detach())
-
+        out_rnn = out_rnn.detach()
         # Reshaping the outputs in the shape of (batch_size, seq_length, hidden_size)
         # so that it can fit into the fully connected layer
         out_rnn = out_rnn[:, -1, :]
 
         # Convert the final state to our desired output shape (batch_size, output_dim)
         out_rnn = self.fc_rnn(out_rnn)
-
+        out_rnn = self.dropout_rnn(out_rnn)
         # __________ Hybrid _________________
-        out = torch.cat((out_lstm, out_rnn), 1)
-        out = self.fc_last(out)
+        test = torch.cat((out_lstm, out_rnn), 1).detach()
+        out = self.fc_last(test)
+        out = self.dropout_last(out)
         return out  # Pass forward through fully connected DNN.

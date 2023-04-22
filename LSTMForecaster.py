@@ -8,7 +8,7 @@ device = 'cuda' if USE_CUDA else 'cpu'
 
 class LSTMForecaster(nn.Module):
 
-    def __init__(self, n_features, n_hidden, n_outputs, sequence_len, n_lstm_layers=1, n_deep_layers=10, use_cuda=False):
+    def __init__(self, n_features, n_hidden, n_outputs, sequence_len, n_lstm_layers=1, n_deep_layers=10, use_cuda=False, p_dropout=0.5):
 
         # n_features: number of input features
         # n_hidden: number of neurons in hidden layer
@@ -30,6 +30,7 @@ class LSTMForecaster(nn.Module):
 
         # first dense after lstm
         self.fc = nn.Linear(n_hidden * sequence_len, n_outputs)
+        self.dropout = nn.Dropout(p=p_dropout)
 
     def forward(self, x):
 
@@ -46,5 +47,7 @@ class LSTMForecaster(nn.Module):
 
         # Forward Pass
         x, h = self.lstm(x, self.hidden)  # LSTM # Flatten lstm out
+        x = x.detach()
         x = self.fc(x.contiguous().view(x.shape[0], -1))  # First Dense
+        x = self.dropout(x)
         return x  # Pass forward through fully connected DNN.
