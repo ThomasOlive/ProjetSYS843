@@ -8,7 +8,7 @@ device = 'cuda' if USE_CUDA else 'cpu'
 
 class LSTMForecaster(nn.Module):
 
-    def __init__(self, n_features, n_hidden, n_outputs, sequence_len, n_lstm_layers=1, n_deep_layers=10, use_cuda=False, p_dropout=0.5):
+    def __init__(self, n_features, n_hidden, n_outputs, sequence_len, n_lstm_layers=1, use_cuda=False, p_dropout=0.5):
 
         # n_features: number of input features
         # n_hidden: number of neurons in hidden layer

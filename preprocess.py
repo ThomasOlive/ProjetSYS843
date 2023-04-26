@@ -48,6 +48,15 @@ def preprocess(csv_path, cols_2_norm, standard_bool=False):
     max_out = df['T_Depart_PV'].max()
     df['T_Depart_PV'] = df['T_Depart_PV'].apply(lambda x: (x - min_out) / (max_out - min_out))
 
+    for period in [3, 6, 12, 24]:
+        # we express the period in hours, we have 4 rows per hour
+        new_name = 'Air0min_shift' + str(period)
+        df[new_name] = df['Air0min'].shift(-period*4)
+        new_name = 'Air0max_shift' + str(period)
+        df[new_name] = df['Air0max'].shift(-period*4)
+
+    df = df.dropna().reset_index(drop=True)  # delete the empty rows created by the shifting
+
     return df, min_out, max_out
 
 

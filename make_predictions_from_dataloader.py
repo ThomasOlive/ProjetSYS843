@@ -32,10 +32,12 @@ def make_predictions_from_dataloader(model, unshuffled_dataloader, dframe, devic
             x = x.to(device)
             y = y.squeeze().to(device)
 
-            p = model(x).squeeze()
+            p = model(x)
             # print(p)
-            # print(p.shape)
             # print(type(p))
+            if target_wdw == 1:
+                p = torch.squeeze(p, len(p.shape)-1)
+
             predictions = np.append(predictions, p, axis=0)
             # print(predictions.shape)
             if target_wdw > 1:
